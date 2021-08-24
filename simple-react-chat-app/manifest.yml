@@ -1,0 +1,7 @@
+applications:
+  - name: Simple React Chat App
+memory: 64M
+path: build/
+buildpack: staticfile_buildpack 
+routes:
+  - route: simple-react-chat-app-bsh.us-south.cf.appdomain.cloud

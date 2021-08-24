@@ -1,0 +1,5 @@
+applications:
+  - name: Simple Node Chat Server
+memory: 64M
+routes:
+  - route: simple-node-chat-server-bsh.us-south.cf.appdomain.cloud
