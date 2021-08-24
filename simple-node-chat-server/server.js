@@ -6,8 +6,8 @@ var uuid = require('uuid-random');
 
 const { uniqueNamesGenerator, adjectives, colors, animals, names } = require('unique-names-generator');
 
-// Running our server on port 3080
-var PORT  = process.env.PORT || 3080
+// Running our server on port 8080
+var PORT  = process.env.PORT || 8080
 
 var server = app.listen(PORT, function() {
   var host = server.address().address;
