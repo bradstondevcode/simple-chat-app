@@ -99,8 +99,6 @@ class ChatRoom extends Component {
 		// localStorage.removeItem('userID')
 		// localStorage.removeItem('username')
 
-		
-
 	}
 
 	componentWillUnmount(){

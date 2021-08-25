@@ -2,9 +2,7 @@ import socketIOClient from "socket.io-client";
 
 var serverEndpoint = ""
 
-export var socket = socketIOClient(serverEndpoint, {
-	transports: ['websocket']
-});
+export var socket = null
 
 export function setSocketServerURL(serverURL){
 	var newSocket = socketIOClient(serverURL, {
