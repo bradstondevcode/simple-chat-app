@@ -1,7 +1,21 @@
 import socketIOClient from "socket.io-client";
 
-const serverEndpoint = "http://simple-chat-node-server-a-simple-chat-app.trivia-test-bsh-082721-162e406f043e20da9b0ef0731954a894-0000.us-east.containers.appdomain.cloud/";
+var serverEndpoint = ""
 
-export const socket = socketIOClient(serverEndpoint, {
+export var socket = socketIOClient(serverEndpoint, {
 	transports: ['websocket']
 });
+
+export function setSocketServerURL(serverURL){
+	var newSocket = socketIOClient(serverURL, {
+		transports: ['websocket']
+	})
+
+	socket = newSocket
+
+	return newSocket
+}
+
+export function printServerURL(){
+	console.log(serverEndpoint)
+}

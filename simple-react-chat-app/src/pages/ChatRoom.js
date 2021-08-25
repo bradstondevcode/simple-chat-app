@@ -10,7 +10,7 @@ import CurrentUserText from '../components/CurrentUserText'
 import OtherUserText from '../components/OtherUserText'
 import ChatNotification from '../components/ChatNotification'
 
-import {socket} from '../services/socket'
+import {printServerURL, setSocketServerURL} from '../services/socket'
 
 let styles = {
 	chatRoomContainer: {
@@ -45,7 +45,7 @@ let styles = {
 		flex: 0,
 		display: 'flex',
     	flexDirection: 'column',
-    	height: "75vh",
+    	height: "65vh",
     	overflowY: 'auto',
     	width: '45vw',
     	alignSelf: 'center',
@@ -65,6 +65,11 @@ let styles = {
 	},
 	messageSubmitButton: {
 		flex: 0
+	},
+	serverInputSection: {
+		display: 'flex',
+		justifyContent: 'flex-start',
+		marginBottom: 5
 	}
 
 }
@@ -78,10 +83,12 @@ class ChatRoom extends Component {
 	    this.state = {
 	    	currentUsername: "User1",
 	    	currentUserID: 1,
+	    	serverURL: '',
 	    	message: '',
 	    	chatRoomData: [
 	    	],
 	    	initialLoad: true,
+	    	chatSocket: null
 	    };
 	    //Create Ref for managing "auto-scroll"
 	    this.messagesEndRef = React.createRef()
@@ -92,43 +99,15 @@ class ChatRoom extends Component {
 		// localStorage.removeItem('userID')
 		// localStorage.removeItem('username')
 
-		let userIDVal = localStorage.getItem('userID')
-		let usernameVal = localStorage.getItem('username')
-
-		//If user does not have a userid and username saved in local storage, create them for them
-		if(!userIDVal){
-
-	      socket.on("SetUserData", userData => {
-	        //When user creation on server is complete, retrieve and save data to local storage
-	        localStorage.setItem('userID', userData.userID)
-	        localStorage.setItem('username', userData.username)
-	        console.log(userData)
-
-	        this.setState({currentUsername: userData.username, currentUserID: userData.userID})
-
-	        //Notify Socket server is not ready to chat
-	        socket.emit("UserEnteredRoom", userData)
-	      });
-
-	      //Send Socket command to create user info for current user
-	      socket.emit("CreateUserData")
-	    } 
-	    else {
-	    	//If user already has userid and username, notify server to allow them to join chat
-	    	this.setState({currentUsername: usernameVal, currentUserID: userIDVal})
-	    	socket.emit("UserEnteredRoom", {userID: userIDVal, username: usernameVal})
-	    }
-
-	    //Retrieve game data (from Get Chat data socket call)
-	    socket.on("RetrieveChatRoomData", (chatRoomData) => {
-	    	this.setState({chatRoomData: chatRoomData}, () => this.shouldScrollToBottom())
-	    })
+		
 
 	}
 
 	componentWillUnmount(){
-		socket.off("RetrieveChatRoomData")
-		socket.off("SetUserData")
+		if(this.state.chatSocket){
+			this.state.chatSocket.off("RetrieveChatRoomData")
+			this.state.chatSocket.off("SetUserData")
+		}
 	}
 
 	setMessage(message){
@@ -141,10 +120,60 @@ class ChatRoom extends Component {
 
 		if(message.length > 0){
 			//Send chat message to server...
-			socket.emit("SendMessage", {message: message, username: currentUsername, userID: currentUserID, timeStamp: null})
+			this.state.chatSocket.emit("SendMessage", {message: message, username: currentUsername, userID: currentUserID, timeStamp: null})
 			//Clear chat message textfield box
 			this.setState({message: ''})
 		}
+	}
+
+	setServerURL(serverURL){
+		console.log("Set Server URL")
+		this.setState({serverURL: serverURL})
+	}
+
+	submitServerURL(){
+		console.log("Submit Server URL")
+		var chatSocket = setSocketServerURL(this.state.serverURL)
+		this.setState({chatSocket: chatSocket, chatRoomData: []}, () => {
+			this.SetChatRoomSocketConnection()
+		})
+	}
+
+	SetChatRoomSocketConnection(){
+
+		printServerURL()
+
+		let userIDVal = localStorage.getItem('userID')
+		let usernameVal = localStorage.getItem('username')
+
+		//If user does not have a userid and username saved in local storage, create them for them
+		if(!userIDVal){
+
+	      this.state.chatSocket.on("SetUserData", userData => {
+	        //When user creation on server is complete, retrieve and save data to local storage
+	        localStorage.setItem('userID', userData.userID)
+	        localStorage.setItem('username', userData.username)
+	        console.log(userData)
+
+	        this.setState({currentUsername: userData.username, currentUserID: userData.userID})
+
+	        //Notify Socket server is not ready to chat
+	        this.state.chatSocket.emit("UserEnteredRoom", userData)
+	      });
+
+	      //Send Socket command to create user info for current user
+	      this.state.chatSocket.emit("CreateUserData")
+	    } 
+	    else {
+	    	//If user already has userid and username, notify server to allow them to join chat
+	    	this.setState({currentUsername: usernameVal, currentUserID: userIDVal})
+	    	this.state.chatSocket.emit("UserEnteredRoom", {userID: userIDVal, username: usernameVal})
+	    }
+
+	    //Retrieve game data (from Get Chat data socket call)
+	    this.state.chatSocket.on("RetrieveChatRoomData", (chatRoomData) => {
+	    	this.setState({chatRoomData: chatRoomData}, () => this.shouldScrollToBottom())
+	    })
 	}
 
 
@@ -173,6 +202,32 @@ class ChatRoom extends Component {
 
 		return (
 			<Container style = {styles.chatRoomContainer}>
+
+				<Container style={styles.serverInputSection}>
+			    		<TextField 
+			    			style= {styles.messageTextField}
+			    			id="input-with-icon-adornment" 
+			    			label="Enter Chat Server Url" 
+			    			variant="outlined"  
+			    			value={this.state.serverURL} 
+			    			onChange={(event) => this.setServerURL(event.target.value)}
+			    			onKeyPress= {(event) => {
+					            if (event.key === 'Enter') {
+					              console.log('Enter key pressed');
+					              this.submitServerURL()
+					            }
+						    }}
+						    InputProps={{
+						    	endAdornment:(
+							    	<InputAdornment position="end">
+							    		<IconButton onClick={() => this.submitServerURL()}>
+							    			<SendIcon/>
+							    		</IconButton>
+							    	</InputAdornment>
+							    )
+						    }}
+			    		/>
+				</Container>
 
 				<Container style ={styles.header}>
 					<Row style={styles.headerText}>Chat Room</Row>
