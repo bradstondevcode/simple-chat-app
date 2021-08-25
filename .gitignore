@@ -10,8 +10,6 @@
 
 # production
 /build
-/simple-node-chat-server/node_modules
-/simple-react-chat-app/node_modules
 
 # misc
 .DS_Store
