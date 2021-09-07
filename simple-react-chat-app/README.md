@@ -1,70 +1,95 @@
-# Getting Started with Create React App
+## Step 1: Create a Dockerfile
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Open up a terminal on your local machine and change directory (cd) into Simple React Chat App directory:
 
-## Available Scripts
+```bash
+cd <location-path>/simple-react-chat-app
+```
 
-In the project directory, you can run:
+Now that we have our Dockerfile, we will input the lines below to containerize our application. Each line will execute in order setting up our container image and allowing our ReactJS application to run in our environment. This will be a multi-stage build process and will be broken down into two phases; a build-step and run-step. 
 
-### `npm start`
+```bash
+#Build Steps
+FROM node:alpine3.10 as build-step
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+RUN mkdir /app
+WORKDIR /app
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+COPY package.json /app
+RUN npm install
+COPY . /app
 
-### `npm test`
+RUN npm run build
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+#Run Steps
+FROM nginx:1.19.8-alpine  
+COPY --from=build-step /app/build /usr/share/nginx/html
+```
 
-### `npm run build`
+To learn more about what is happening in the Dockerfile, check out my blog where I discuss in detail containerizing a ReactJS App: [Dockers and Dad Jokes: How to Containerize a ReactJS Application](https://ibm.biz/how-to-containerize-react-app-031821-bradstondev)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Step 2: Create a .dockerignore
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Next we will create a _.dockerignore_ file. This file will allow us to "ignore" specific files when building our docker image, which will help us save us build time and ensure we don't accidentally overwrite any installed files in our image.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+```bash
+node_modules
+build
+.dockerignore
+Dockerfile
+Dockerfile.prod
+```
+![Alt Text](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/q3pwabyxv7p1h5mr1zae.png)
 
-### `npm run eject`
+## Step 3: Build Docker Image
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+Our next step will be to build our Docker Image that we will want to run in our container. Here is the format of the command we will be using in our terminal for creating our Docker Image. 
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```bash
+docker build -t <image-name>:<tag> .
+```
+So what's happening here:
+* _docker build_ initiates the Docker Image building process
+* _-t_ Flag used for tagging build 'name:tag' format
+* _image-name_ is our desired image name
+* _tag_ is our desired tag for this version of the image. Used for deploying different versions of images
+* _._ signifies the path that we will be building from. NOTE: This is **absolutely** necessary for the build command to work
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+So in our case this is what my build command will look like (feel free to use this command as well). 
 
-## Learn More
+```bash
+docker build -t simple-chat-react-app:v1 .
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Step 4: Run Docker
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Now let's run our Docker and see it in action.
 
-### Code Splitting
+The next command we will run in the terminal will look like this:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+```bash
+docker run -p 8080:80/tcp -d <image-name>:<tag>
+```
 
-### Analyzing the Bundle Size
+So what's happening here:
+* _docker run_ runs our Docker image within our container
+* _-p_ is used to set the port we want to expose outside of our container to our host
+* _8000:80/tcp exposes our application, hosted in our nginx server at port 80 in our container, on our local machine at the 8000 port
+* _-d_ allows our container to run in the background, allowing us to continue to use our terminal.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+In my case, the command will look like this:
 
-### Making a Progressive Web App
+```bash
+docker run -p 8080:80/tcp -d simple-chat-react-app:v1
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## Step 5: Verify Docker is Running and its Expose Port
 
-### Advanced Configuration
+ In order to verify, we will need to run this command in our terminal:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+```bash
+docker ps
+```
 
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Essentially, the _docker ps_ command lists all available running containers in our Docker environment. If we do not see our docker image listed in the list of available containers, then we did something incorrectly in a previous step and must fix that error. In my particular case, you should be able to see that the Docker port 80 is now being exposed at the port 8080 on my local machine (outside of the containerized environment).
